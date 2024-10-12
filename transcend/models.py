@@ -1,18 +1,18 @@
 from django.db import models
 
 
+class LanguageCodes(models.TextChoices):
+    POLISH = ("PL",)
+    GERMAN = ("DE",)
+
+
 class Language(models.Model):
-        class LanguageCode(models.TextChoices):
-            POLISH = 'PL',
-            GERMAN = 'DE',
 
+    name = models.CharField(max_length=100)
+    code = models.CharField(max_length=10, choices=LanguageCodes.choices)
 
-        name = models.CharField(max_length=100)
-        code = models.CharField(max_length=10, choices=LanguageCode.choices)
-
-        def  __str__(self):
-            return self.name
-
+    def __str__(self):
+        return self.name
 
 
 class Translation(models.Model):
@@ -24,7 +24,9 @@ class Translation(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=['key', 'language'], name='unique_translation')
+            models.UniqueConstraint(
+                fields=["key", "language"], name="unique_translation"
+            )
         ]
 
     def __str__(self):
