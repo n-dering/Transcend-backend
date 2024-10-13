@@ -7,7 +7,6 @@ class LanguageCodes(models.TextChoices):
 
 
 class Language(models.Model):
-
     name = models.CharField(max_length=100)
     code = models.CharField(max_length=10, choices=LanguageCodes.choices)
 
@@ -25,7 +24,7 @@ class Translation(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["key", "language"], name="unique_translation"
+                fields=["id", "language"], name="unique_translation"
             )
         ]
 
