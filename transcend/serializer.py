@@ -1,6 +1,7 @@
 from typing import Any, Dict
+from django.forms import ValidationError
 from rest_framework import serializers
-from .models import Translation, Language
+from .models import LanguageCodes, Translation, Language
 from django.db.models import QuerySet
 
 
@@ -22,8 +23,7 @@ class TranslationSerializer(serializers.ModelSerializer):
         fields: list[str] = ["key", "value", "language"]
 
     def create(self, validated_data):
-        language_data = validated_data.pop("language")
-        language, _ = Language.objects.get_or_create(**language_data)
+        language, _ = Language.objects.get_or_create(**validated_data["language"])
         validated_data["language"] = language
         return super().create(validated_data)
 
