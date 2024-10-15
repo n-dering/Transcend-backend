@@ -20,7 +20,7 @@ class TranslationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model: type = Translation
-        fields: list[str] = ["key", "value", "language"]
+        fields: list[str] = ["id", "key", "value", "language"]
 
     def create(self, validated_data):
         language, _ = Language.objects.get_or_create(**validated_data["language"])

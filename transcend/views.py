@@ -5,6 +5,7 @@ from django.db import transaction
 from transcend import serializer
 from transcend.serializer import TranslationSerializer
 from .models import Translation, LanguageCodes
+from rest_framework.decorators import action
 
 from rest_framework.request import Request
 from django.db.models import QuerySet
@@ -58,22 +59,40 @@ class TranslationsViewset(mixins.ListModelMixin, viewsets.GenericViewSet):
                 display_data[langcode.value] = serializer.validated_data
         return Response(display_data, status=status.HTTP_201_CREATED)
 
-    def update(self, request: Request, *args, **kwargs) -> Response:
+    @action(methods=["patch"], detail=False)
+    def updateFields(self, request: Request, *args, **kwargs) -> Response:
         data = request.data
         queryset: QuerySet = self.get_queryset()
-        key_value = kwargs.get("key")
 
-        existing_rows = queryset.filter(key=key_value)
+        if not isinstance(data, list):
+            data = [data]
 
-        if not existing_rows.exists():
-            return Response(
-                {"error": "Key does not exist."}, status=status.HTTP_400_BAD_REQUEST
-            )
-
-        serializer = self.get_serializer(existing_rows.first(), data=data, partial=True)
-        serializer.is_valid(raise_exception=True)
+        updated_items = []
+        errors = []
 
         with transaction.atomic():
-            serializer.save()
+            for item in data:
+                existing_rows = queryset.filter(pk=item.get("id"))
+                if not existing_rows.exists():
+                    errors.append(
+                        {"id": item.get("id"), "error": "Key does not exist."}
+                    )
+                    continue
 
-        return Response(serializer.data, status=status.HTTP_200_OK)
+                serializer = self.get_serializer(
+                    existing_rows.first(), data=item, partial=True
+                )
+                try:
+                    serializer.is_valid(raise_exception=True)
+                    serializer.save()
+                    updated_items.append(serializer.data)
+                except Exception as e:
+                    errors.append({"id": item.get("id"), "error": str(e)})
+
+        if errors:
+            return Response(
+                {"updated": updated_items, "errors": errors},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(updated_items, status=status.HTTP_200_OK)
