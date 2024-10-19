@@ -2,31 +2,42 @@ from django.db import models
 
 
 class LanguageCodes(models.TextChoices):
-    POLISH = ("PL",)
-    GERMAN = ("DE",)
+    POLISH = ("pl",)
+    GERMAN = ("de",)
 
 
 class Language(models.Model):
-    name = models.CharField(max_length=100)
-    code = models.CharField(max_length=10, choices=LanguageCodes.choices)
+    code = models.CharField(max_length=10)
 
     def __str__(self):
-        return self.name
+        return self.code
+
+
+class TranslationKey(models.Model):
+    key = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.key
 
 
 class Translation(models.Model):
-    key = models.CharField()
+    translation_key = models.ForeignKey(
+        TranslationKey, on_delete=models.CASCADE, related_name="translations"
+    )
+    language = models.ForeignKey(
+        Language, on_delete=models.CASCADE, related_name="translations"
+    )
     value = models.TextField()
-    language = models.ForeignKey(Language, on_delete=models.DO_NOTHING)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=["id", "language"], name="unique_translation"
-            )
-        ]
-
     def __str__(self):
-        return f"{self.key}_{self.language}"
+        return f"{self.translation_key} ({self.language}): {self.value}"
+
+    # class Meta:
+    #     constraints = [
+    #         models.UniqueConstraint(
+    #             fields=["id", "language"], name="unique_translation"
+    #         )
+    #     ]

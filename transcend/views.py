@@ -1,98 +1,57 @@
+from rest_framework import viewsets, status
 from rest_framework.response import Response
-from rest_framework import status, viewsets, mixins
+from rest_framework.decorators import action
+from .models import Translation, TranslationKey, Language
+from .serializers import TranslationSerializer
 from django.db import transaction
 
-from transcend import serializer
-from transcend.serializer import TranslationSerializer
-from .models import Translation, LanguageCodes
-from rest_framework.decorators import action
 
-from rest_framework.request import Request
-from django.db.models import QuerySet
+class TranslationViewSet(viewsets.ViewSet):
+    def list(self, request):
+        languages = Language.objects.prefetch_related("translations").all()
+        response_data = {}
+        for language in languages:
+            translations = language.translations.all()
+            response_data[language.code] = TranslationSerializer(
+                translations, many=True
+            ).data
+        return Response(response_data)
 
-
-class TranslationsViewset(mixins.ListModelMixin, viewsets.GenericViewSet):
-    queryset = Translation.objects.all()
-    serializer_class = TranslationSerializer
-    lookup_field = "key"
-
-    def list(self, request: Request, *args, **kwargs) -> Response:
-        queryset = self.get_queryset()
-
-        language_codes = queryset.values_list("language__code", flat=True).distinct()
-
-        output = {}
-
-        for code in language_codes:
-            filtered_values = queryset.filter(language__code=code)
-            serializer = self.get_serializer(filtered_values, many=True)
-            output[code] = serializer.data
-
-        return Response(output, status=status.HTTP_200_OK)
-
-    def create(self, request: Request, *args, **kwargs) -> Response:
-        queryset: QuerySet = self.get_queryset()
-        key_value = request.data["key"]
-        print(key_value)
-        if key_value is None:
-            return Response(
-                {"error": "Key is required."}, status=status.HTTP_400_BAD_REQUEST
-            )
-        translation_data = request.data.copy()
-
-        existing_rows = queryset.filter(key=key_value)
-        if existing_rows.exists():
-            return Response(
-                {"error": "Key already exists."}, status=status.HTTP_400_BAD_REQUEST
-            )
-
-        display_data = {}
-
-        with transaction.atomic():
-            for langcode in LanguageCodes:
-                translation_data["language.code"] = langcode
-
-                serializer = self.get_serializer(data=translation_data)
-                serializer.is_valid(raise_exception=True)
-                serializer.save()
-
-                display_data[langcode.value] = serializer.validated_data
-        return Response(display_data, status=status.HTTP_201_CREATED)
-
-    @action(methods=["patch"], detail=False)
-    def updateFields(self, request: Request, *args, **kwargs) -> Response:
+    @transaction.atomic
+    @action(detail=False, methods=["post"])
+    def create_or_update(self, request):
         data = request.data
-        queryset: QuerySet = self.get_queryset()
 
-        if not isinstance(data, list):
-            data = [data]
-
-        updated_items = []
-        errors = []
-
-        with transaction.atomic():
-            for item in data:
-                existing_rows = queryset.filter(pk=item.get("id"))
-                if not existing_rows.exists():
-                    errors.append(
-                        {"id": item.get("id"), "error": "Key does not exist."}
-                    )
-                    continue
-
-                serializer = self.get_serializer(
-                    existing_rows.first(), data=item, partial=True
+        for language_code, translations in data.items():
+            try:
+                language = Language.objects.get(code=language_code)
+            except Language.DoesNotExist:
+                return Response(
+                    {"error": f"Language with code '{language_code}' not found."},
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
-                try:
-                    serializer.is_valid(raise_exception=True)
-                    serializer.save()
-                    updated_items.append(serializer.data)
-                except Exception as e:
-                    errors.append({"id": item.get("id"), "error": str(e)})
 
-        if errors:
-            return Response(
-                {"updated": updated_items, "errors": errors},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            for translation_data in translations:
+                key_value = translation_data.get("translation_key")
+                value = translation_data.get("value")
 
-        return Response(updated_items, status=status.HTTP_200_OK)
+                if not key_value or not value:
+                    return Response(
+                        {"error": "Both 'translation_key' and 'value' are required."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+                # Get or create the translation key
+                translation_key, _ = TranslationKey.objects.get_or_create(key=key_value)
+
+                # Get or create the translation entry
+                translation, created = Translation.objects.update_or_create(
+                    translation_key=translation_key,
+                    language=language,
+                    defaults={"value": value},
+                )
+
+        return Response(
+            {"message": "Translations created/updated successfully."},
+            status=status.HTTP_200_OK,
+        )
