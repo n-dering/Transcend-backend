@@ -4,9 +4,11 @@ from transcend.models import Language, Translation
 
 
 class TranslationSerializer(serializers.ModelSerializer):
+    key = serializers.CharField(source="translation_key.key")
+
     class Meta:
         model = Translation
-        fields = ["translation_key", "value", "updated_at"]
+        fields = ["key", "value", "updated_at"]
 
 
 class LanguageTranslationSerializer(serializers.ModelSerializer):

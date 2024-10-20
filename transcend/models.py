@@ -22,7 +22,7 @@ class TranslationKey(models.Model):
 
 class Translation(models.Model):
     translation_key = models.ForeignKey(
-        TranslationKey, on_delete=models.CASCADE, related_name="translations"
+        TranslationKey, on_delete=models.CASCADE, related_name="translations_key"
     )
     language = models.ForeignKey(
         Language, on_delete=models.CASCADE, related_name="translations"
