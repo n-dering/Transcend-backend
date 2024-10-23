@@ -34,10 +34,3 @@ class Translation(models.Model):
 
     def __str__(self):
         return f"{self.translation_key} ({self.language}): {self.value}"
-
-    # class Meta:
-    #     constraints = [
-    #         models.UniqueConstraint(
-    #             fields=["id", "language"], name="unique_translation"
-    #         )
-    #     ]
