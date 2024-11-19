@@ -6,7 +6,7 @@ from .serializers import TranslationSerializer
 from django.db import transaction
 from rest_framework.views import APIView
 
-from rest_framework.authentication import , BasicAuthentication
+from rest_framework.authentication import BasicAuthentication
 from rest_framework.permissions import IsAuthenticated
 
 
