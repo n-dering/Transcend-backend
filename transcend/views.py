@@ -4,9 +4,16 @@ from rest_framework.decorators import action
 from .models import Translation, TranslationKey, Language
 from .serializers import TranslationSerializer
 from django.db import transaction
+from rest_framework.views import APIView
+
+from rest_framework.authentication import , BasicAuthentication
+from rest_framework.permissions import IsAuthenticated
 
 
-class TranslationViewSet(viewsets.ViewSet):
+class TranslationViewSet(APIView):
+    authentication_classes = [BasicAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def list(self, request):
         languages = Language.objects.prefetch_related("translations").all()
         response_data = {}

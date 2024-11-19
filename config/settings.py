@@ -42,6 +42,9 @@ INSTALLED_APPS = [
     "transcend",
 ]
 REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.BasicAuthentication",
+    ],
     "DEFAULT_SCHEMA_CLASS": "rest_framework.schemas.coreapi.AutoSchema",
     "DEFAULT_RENDERER_CLASS": (
         "rest_framework.renderers.JSONRenderer",
